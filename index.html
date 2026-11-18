@@ -214,7 +214,7 @@
         </div>
         <div class="meta-item">
           <strong>Effective &amp; Last Updated</strong>
-          November 16, 2026
+          November 18, 2026
         </div>
       </div>
     </header>
@@ -230,10 +230,10 @@
     <section>
       <h2>1. Overview &amp; Privacy Commitment</h2>
       <p>
-        RudraGrid Technologies (&ldquo;we&rdquo;, &ldquo;our&rdquo;, or &ldquo;us&rdquo;) built <strong>BhuLens</strong> on a strict <strong>local-first, privacy-by-design architecture</strong>. Core geospatial features—including satellite map inspection, Uttar Pradesh cadastral parcel overlays, GPS field walk tracking, and manual point-by-point boundary area measurement—work directly on your Android device without requiring mandatory account registration.
+        RudraGrid Technologies (&ldquo;we&rdquo;, &ldquo;our&rdquo;, or &ldquo;us&rdquo;) built <strong>BhuLens</strong> with local-first features. Map tiles, selected parcel lookups, optional account functions, purchases, and user-submitted Beta reports can involve off-device processing. Core map inspection, GPS field walks, and manual boundary measurements do not require account registration, but map and lookup requests may transmit geographic data to the selected map or public-data service.
       </p>
       <p>
-        <strong>What We Never Collect:</strong> BhuLens does <strong>not</strong> collect, request, or store Aadhaar numbers, PAN numbers, bank account details, credit/debit card numbers, contacts, call logs, SMS messages, microphone audio, camera photos, or advertising identifiers (AAID). BhuLens contains <strong>zero third-party advertising SDKs</strong> (no AdMob or ad trackers) and <strong>zero third-party behavioural analytics or crash-tracking SDKs</strong> (no Firebase Analytics or Firebase Crashlytics).
+        <strong>Data not requested by a dedicated app feature:</strong> The inspected app source has no Aadhaar/PAN, contact-book, call-log, SMS, microphone, camera-capture, or advertising-ID feature. The app does allow an eligible Beta tester to select and upload an image with a report. Payment credentials are handled by Google Play, not collected by the app or publisher backend. No direct advertising, Firebase Analytics, or Crashlytics app dependency was found in the inspected declarations; this does not establish that third-party map or identity SDKs perform no provider-side processing.
       </p>
     </section>
 
@@ -255,11 +255,11 @@
             </tr>
             <tr>
               <td><code>android.permission.INTERNET</code><br/><code>android.permission.ACCESS_NETWORK_STATE</code></td>
-              <td>Required to load satellite and road base map tiles via the Google Maps SDK, fetch publicly available cadastral map tiles and plot references from official UP revenue servers (<code>upbhunaksha.gov.in</code>), retrieve satellite capture vintage metadata from Esri World Imagery, and communicate over HTTPS for optional Google Sign-In and Google Play Billing verification.</td>
+              <td>Used for map tiles and user-selected parcel/geospatial requests to public data services, Google identity sign-in, Google Play Billing, and optional publisher-backend requests. The inspected Esri identify branch is not invoked through its current UI caller. App-authored release API endpoints use HTTPS; this does not independently verify every provider SDK's internal network traffic.</td>
             </tr>
             <tr>
               <td><code>com.android.vending.BILLING</code></td>
-              <td>Required by the official Google Play Billing Library to display subscription/lifetime plan details and process optional in-app upgrades to <strong>BhuLens PRO</strong> through Google Play.</td>
+              <td>The public client initializes Google Play Billing and contains product-query, restore, and purchase UI flows. Backend purchase verification is separately gated by <code>PLAY_BILLING_ENABLED</code>, whose checked-in default is <code>false</code>; the production runtime value is unverified. The current owner decision keeps the UI unchanged and defers billing readiness. A purchase may therefore fail server verification while the gate is false.</td>
             </tr>
           </tbody>
         </table>
@@ -272,77 +272,89 @@
     <section>
       <h2>3. Information Stored Locally on Your Device vs. Transmitted Over HTTPS</h2>
 
-      <h3>3.1 Strictly Local On-Device Data (Never Uploaded Automatically)</h3>
+      <h3>3.1 Local On-Device Data</h3>
       <p>The following data is stored exclusively inside your device&rsquo;s private application sandbox:</p>
       <ul>
         <li><strong>Local SQLite Database (<code>khetrekha.db</code>):</strong> Saved revenue village bookmarks (<code>villages</code> table), cadastral overlay alignment parameters (<code>cadastral_overlays</code> table), and your user-traced manual boundary polygons, vertices, and area calculations (<code>boundary_measurements</code> table).</li>
         <li><strong>Map &amp; WMS Tile Cache:</strong> Temporarily cached cadastral raster tiles and composite overlays stored in the app&rsquo;s private cache directory for fast offline/low-connectivity field viewing.</li>
-        <li><strong>Encrypted Local Preferences (<code>EncryptedSharedPreferences</code>):</strong> Language selection (English / Hindi), last map camera viewport, and—if you opt into signing in—AES-256-GCM / AES-256-SIV hardware-backed encrypted session tokens and signed cryptographic entitlement leases.</li>
-        <li><strong>Cloud Backup Exclusion:</strong> BhuLens explicitly configures <code>android:allowBackup="false"</code> and <code>data_extraction_rules.xml</code> exclusions so your local database and encrypted preferences are not silently extracted to unencrypted cloud backups.</li>
+        <li><strong>Local preferences and credentials:</strong> Language/map preferences and local account state are kept in app storage. Authentication/session credentials use AndroidX Security Crypto and Android Keystore-backed APIs when the secure-storage path is available. The Room SQLite database itself is not encrypted by Room.</li>
+        <li><strong>Backup settings:</strong> The app source sets <code>android:allowBackup="false"</code> and defines data-extraction exclusions. This is a source configuration statement, not a guarantee about every device/OEM transfer path.</li>
+        <li><strong>Survey and saved data:</strong> Manually created boundary points/measurements and saved village/overlay data are stored locally; the inspected app/backend code does not implement cloud sync for those survey records.</li>
       </ul>
 
-      <h3>3.2 Data Transmitted Over Encrypted HTTPS Connections</h3>
+      <h3>3.2 Data That May Leave the Device</h3>
       <ul>
-        <li><strong>Cadastral &amp; Plot Queries to Official Public Portals:</strong> When you select a District, Tehsil, Village, or tap a plot number (Gata/Khasra), your device sends the selected administrative/plot code directly over HTTPS to <code>https://upbhunaksha.gov.in</code> to render the cadastral map layer and public Khatauni plot summary. Your personal identity is not attached to these requests.</li>
-        <li><strong>Optional Google Sign-In &amp; Account Management:</strong> If you choose to sign in (using Android Credential Manager / Sign in with Google) to manage a <strong>BhuLens PRO</strong> subscription or submit a Beta bug report, our backend receives your Google-verified basic profile (email address, display name, profile photo URL, and Google subject identifier) and a randomly generated installation UUID (<code>deviceInstallId</code>) to bind your session and cryptographic entitlement lease.</li>
-        <li><strong>Optional Google Play Billing Verification:</strong> When you purchase a BhuLens PRO plan, Google Play processes the payment directly. Our backend receives only the Google Play <code>purchaseToken</code>, <code>productId</code>, and package name to verify entitlement status with the Google Play Developer API and issue a cryptographically signed ECDSA P-256 entitlement lease. We never see or store your payment card, UPI ID, or banking credentials.</li>
-        <li><strong>User-Initiated Beta Bug Reports:</strong> Only if you are an enrolled Beta tester and explicitly submit a bug report, the app transmits your written bug description and a sanitized diagnostic snapshot (automatically scrubbed by <code>SensitiveDataSanitizer</code> to redact API keys, bearer tokens, JWTs, email addresses, and phone numbers).</li>
+        <li><strong>Maps and public cadastral lookup:</strong> Map rendering and user-selected parcel/plot lookups can transmit map coordinates, viewport/bounds, administrative codes, plot identifiers, and related query values to Google Maps/map endpoints and public Uttar Pradesh cadastral services, including <code>upbhunaksha.gov.in</code>. These transfers support map display and parcel lookup. The app code also contains other map-provider endpoints; the exact provider path depends on the selected map layer and release configuration. The inspected Esri identify caller currently takes a path that does not invoke its Esri request. Provider-side retention and SDK telemetry are not established by this app source.</li>
+        <li><strong>Optional Google sign-in and account:</strong> If you choose Google sign-in, Google Identity/Credential Manager performs the credential flow and returns an ID token. The app sends that token and its generated installation ID (<code>deviceInstallId</code>) to the publisher backend. The backend verifies the token and stores the Google subject, verified email, display name, app/package/version, device model/OS, and session IP address/user-agent. The app request and backend schema do not include or store a profile-photo URL. Google&rsquo;s sign-in documentation describes user consent to share profile information; it does not establish all provider-side processing or retention for this app.</li>
+        <li><strong>Google Play Billing and purchases:</strong> The public client initializes Billing and can query products/purchases, restore, and start a purchase flow. When a purchase callback is received, the client can send purchase/product data, including a purchase token, to the publisher backend for verification. The backend gate is <code>PLAY_BILLING_ENABLED</code>; the checked-in default is <code>false</code> and a false runtime value rejects verification before persistence or a Google Publisher API call. The actual production value is unknown. The owner has decided to keep the current UI unchanged, keep the flag false, and defer the billing readiness review. Do not assume live product availability or successful verification. Google Play processes the purchase; the app/backend code does not collect card, bank, or UPI credentials.</li>
+        <li><strong>Optional Beta reports and images:</strong> An eligible Beta tester may submit report text and optionally include diagnostics and an image attachment. Diagnostics can include app/version, device model/OS, app state/map type, counts, and entitlement state. A selected image is uploaded to the publisher backend; screenshots can contain personal or location information and are not automatically cleared of all such content. The attachment storage adapter supports local storage; the GCS adapter in source fails closed, and the deployed storage mode is not verified.</li>
       </ul>
+      <p>App-authored production API calls are configured to use HTTPS and the main Android network security configuration blocks cleartext traffic. This source-level setting does not independently verify every Google or other provider SDK connection. See <a href="#security">Data Security Practices</a>; universal in-transit encryption has not been independently verified.</p>
     </section>
 
     <section>
       <h2>4. Third-Party SDKs &amp; Service Providers</h2>
-      <p>BhuLens integrates only essential first-party Android Jetpack libraries and the following Google / mapping services. We encourage you to review their respective privacy policies:</p>
+      <p>The repository declares Google Maps, Google Identity/Credential Manager, Google Play Billing, and app-authored public cadastral/map service calls. The table separates the service role confirmed by official documentation from app-specific data handling confirmed by source. Provider documentation is not a measurement of every request or retention practice in this app.</p>
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
               <th>SDK / Service Provider</th>
-              <th>Role in BhuLens</th>
-              <th>Official Privacy Policy</th>
+              <th>Verified interaction and data boundary</th>
+              <th>Official documentation</th>
             </tr>
           </thead>
           <tbody>
             <tr>
               <td><strong>Google Maps SDK for Android</strong><br/>(<code>com.google.android.gms:play-services-maps</code>)</td>
-              <td>Renders satellite, hybrid, terrain, and road map tiles and camera viewport controls.</td>
-              <td><a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">https://policies.google.com/privacy</a></td>
+              <td>The SDK renders maps in the app. Map use involves map/view coordinates and network requests. The reviewed public SDK pages describe product features and Maps Platform content/caching rules; they do not establish all SDK-side data types, telemetry, retention, or Data Safety sharing classifications for this app. Those details remain unverified.</td>
+              <td><a href="https://developers.google.com/maps/documentation/android-sdk" target="_blank" rel="noopener noreferrer">Maps SDK for Android</a>; <a href="https://developers.google.com/maps/documentation/android-sdk/policies" target="_blank" rel="noopener noreferrer">SDK policies</a>; <a href="https://policies.google.com/privacy?hl=en" target="_blank" rel="noopener noreferrer">Google Privacy Policy</a></td>
             </tr>
             <tr>
               <td><strong>Google Play Billing Library v7</strong><br/>(<code>com.android.billingclient:billing-ktx</code>)</td>
-              <td>Displays subscription/lifetime pricing and processes optional BhuLens PRO purchases through Google Play.</td>
-              <td><a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">https://policies.google.com/privacy</a></td>
+              <td>The official integration guide describes connecting the Billing client, launching a purchase, and verifying it on the developer server. BhuLens's public client starts Billing, while its backend verification is gated and defaults false in checked-in config. The live backend flag and products are unverified.</td>
+              <td><a href="https://developer.android.com/google/play/billing/integrate" target="_blank" rel="noopener noreferrer">Billing integration guide</a>; <a href="https://policies.google.com/privacy?hl=en" target="_blank" rel="noopener noreferrer">Google Privacy Policy</a></td>
             </tr>
             <tr>
               <td><strong>Android Credential Manager &amp; Google Identity Services</strong><br/>(<code>androidx.credentials</code> / <code>googleid</code>)</td>
-              <td>Used only when you voluntarily tap &ldquo;Sign in with Google&rdquo; to authenticate your account.</td>
-              <td><a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">https://policies.google.com/privacy</a></td>
+              <td>The Android sign-in guide describes user consent to share profile information with the app. BhuLens sends the returned ID token to its backend, which verifies and stores the subject, verified email, and display name. Exact SDK-side data collection/retention and the Play “Shared” classification are not established by this guide or source alone.</td>
+              <td><a href="https://developer.android.com/identity/sign-in/credential-manager-siwg" target="_blank" rel="noopener noreferrer">Sign in with Google for Android</a>; <a href="https://policies.google.com/privacy?hl=en" target="_blank" rel="noopener noreferrer">Google Privacy Policy</a></td>
             </tr>
             <tr>
-              <td><strong>Esri World Imagery Metadata Service</strong><br/>(ArcGIS Online REST MapServer)</td>
-              <td>Queries public satellite tile capture date, sensor platform, and resolution metadata for the visible map viewport.</td>
-              <td><a href="https://www.esri.com/en-us/privacy/overview" target="_blank" rel="noopener noreferrer">https://www.esri.com/en-us/privacy/overview</a></td>
+              <td><strong>Official UP public map/land-record services</strong></td>
+              <td>The app sends selected administrative/plot identifiers and geospatial/map query values for public cadastral and parcel lookup. The request paths are app-authored; provider retention is not verified by the app source.</td>
+              <td><a href="https://upbhunaksha.gov.in/" target="_blank" rel="noopener noreferrer">UP BhuNaksha</a>; <a href="https://upbhulekh.gov.in/" target="_blank" rel="noopener noreferrer">UP Bhulekh</a></td>
+            </tr>
+            <tr>
+              <td><strong>Other map endpoints in app source</strong><br/>(including Esri, OpenStreetMap, and OpenTopoMap endpoints)</td>
+              <td>The code contains these endpoints, but their enabled choices and exact release call paths have not all been verified. In particular, the inspected UI caller does not invoke the Esri identify branch. Do not treat every listed endpoint as an active release integration without checking the selected map layer.</td>
+              <td><a href="https://www.esri.com/en-us/privacy/overview" target="_blank" rel="noopener noreferrer">Esri Privacy</a>; <a href="https://osmfoundation.org/wiki/Privacy_Policy" target="_blank" rel="noopener noreferrer">OpenStreetMap Foundation Privacy Policy</a>; <a href="https://opentopomap.org/about" target="_blank" rel="noopener noreferrer">OpenTopoMap information</a></td>
             </tr>
           </tbody>
         </table>
       </div>
+      <p><a href="https://support.google.com/googleplay/android-developer/answer/10787469?hl=en" target="_blank" rel="noopener noreferrer">Google Play Data Safety guidance</a> says SDK/library transmissions count as collection and defines sharing exceptions, including qualifying service-provider processing and certain user-initiated transfers. The publisher remains responsible for the app's complete declaration. Provider-specific exceptions and SDK telemetry must be confirmed before a final Console answer.</p>
     </section>
 
     <section>
-      <h2>5. Data Security Practices</h2>
+      <h2 id="security">5. Data Security Practices</h2>
       <ul>
-        <li><strong>HTTPS / TLS Enforcement:</strong> Production builds enforce <code>cleartextTrafficPermitted="false"</code> via Android&rsquo;s Network Security Configuration (<code>network_security_config.xml</code>), blocking unencrypted HTTP traffic.</li>
-        <li><strong>Hardware-Backed Token Encryption:</strong> Authentication tokens and signed entitlement leases are encrypted at rest using Android Keystore master keys (<code>androidx.security:security-crypto</code>).</li>
-        <li><strong>Release Log Stripping &amp; PII Redaction:</strong> Production release builds use R8/ProGuard rules (<code>-assumenosideeffects</code> on <code>android.util.Log</code> and <code>SafeLog</code>) to strip debug/verbose/info logs, and apply automated regex scrubbing (<code>SensitiveDataSanitizer</code>) to prevent accidental leakage of tokens, keys, or personal identifiers.</li>
+        <li><strong>App-authored network traffic:</strong> The main Android network security configuration blocks cleartext traffic, and app-authored remote API paths require HTTPS in release source configuration. The final merged release artifact and every provider SDK's internal transport were not independently inspected. We therefore do not claim that every data transfer used by every provider has been independently verified as encrypted in transit.</li>
+        <li><strong>Local credentials:</strong> Authentication/session credentials use AndroidX Security Crypto and Android Keystore-backed APIs when the secure-storage path is available. The Room database is app-private but is not encrypted by Room.</li>
+        <li><strong>Logging and report handling:</strong> Backend request logging is configured to redact sensitive keys and not serialize request bodies; authentication session records include IP address and user-agent. User-submitted report diagnostics have specific sanitization, but this does not remove sensitive information from images or guarantee that all free-form content is non-identifying.</li>
       </ul>
     </section>
 
     <section>
       <h2>6. Data Retention &amp; Your Deletion Rights</h2>
+      <p>The inspected source confirms that some server records remain after account deletion, but it does not establish their retention periods, backup purge schedule, or the legal/business basis for each retained category. No fixed deletion deadline or retention rationale is promised here; these require owner and legal review.</p>
       <ul>
-        <li><strong>Deleting Local Data:</strong> You can delete individual saved villages, cadastral overlays, or manual boundary measurements at any time directly inside the BhuLens app, or clear all local data immediately by clearing app storage or uninstalling BhuLens from your device.</li>
-        <li><strong>In-App Account Deletion (For Signed-In Users):</strong> If you have created an account using Google Sign-In, you can permanently delete your account directly inside the app via <strong>Profile &amp; Account &rarr; Delete Account</strong>. Confirming account deletion immediately revokes all active sessions and entitlement leases, anonymizes and scrubs personal identifiers (email, display name, photo URL, and Google identity binding) from our backend database, and clears local credentials on your device.</li>
+        <li><strong>In-app account deletion:</strong> A signed-in user can open <strong>Profile &amp; Account &rarr; Delete Account</strong>, enter the account email for confirmation, and submit the authenticated request. The backend clears the account email/display-name fields, replaces the Google subject with a tombstone, marks the account deleted, revokes session credentials, entitlements, and Beta membership, and clears FCM fields. On success, the app clears local authentication credentials and signed-in account/lease state.</li>
+        <li><strong>Records retained after account deletion:</strong> The current backend flow does not delete linked device/install records and session history, purchase records (if created), village reservation/download records, bug reports/diagnostics and attachments, or security/audit history. The applicable retention periods, backup retention, and purge jobs have not been verified. This is an anonymizing soft delete, not complete/permanent erasure.</li>
+        <li><strong>Local app data:</strong> Account deletion does not wipe the app-generated <code>deviceInstallId</code>, local Room database <code>khetrekha.db</code>, saved villages/overlays/boundaries, map caches, or other local preferences. Clear app storage or uninstall separately to remove local app data; this does not remove server-side records.</li>
+        <li><strong>External deletion request:</strong> Read the <a href="account-deletion.html">Account &amp; Data Deletion information page</a> for the current in-app procedure and external-request status. That page is guidance only, not a web request form. A private external request channel and verified support address are not configured, so users who cannot access the app currently have no external request route. This does not yet satisfy Google Play's web deletion-request requirement.</li>
       </ul>
+      <p>Google Play requires an in-app deletion path and an external web resource that lets users request account deletion when the app supports account creation. See <a href="https://support.google.com/googleplay/android-developer/answer/13327111?hl=en" target="_blank" rel="noopener noreferrer">Google Play's account deletion requirements</a>. Do not use the information page as the Console deletion URL until it provides a secure, functional request path.</p>
     </section>
 
     <section>
@@ -361,11 +373,10 @@
 
     <section>
       <h2>9. Contact Us &amp; Grievance Redressal</h2>
-      <p>If you have any questions, privacy inquiries, or data deletion requests regarding BhuLens, please contact the publisher:</p>
+      <p><strong>Publisher / Company:</strong> RudraGrid Technologies<br/><strong>Founder &amp; Lead Developer:</strong> Rudransh Pratap Singh</p>
       <ul>
-        <li><strong>Publisher / Company:</strong> RudraGrid Technologies</li>
-        <li><strong>Founder &amp; Lead Developer:</strong> Rudransh Pratap Singh</li>
-        <li><strong>Support Email:</strong> <code>[SUPPORT_EMAIL_PENDING_PLAY_CONSOLE]</code> <em>(Official support email address as published on the verified BhuLens Google Play Store listing)</em></li>
+        <li><strong>Account deletion while signed in:</strong> use the in-app procedure in <strong>Profile &amp; Account &rarr; Delete Account</strong>.</li>
+        <li><strong>External assistance:</strong> a verified private support email or secure web request channel has not been provided/configured. We will not publish a placeholder or direct users to send personal data through public GitHub issues. A secure external contact route is an outstanding owner/deployment dependency.</li>
       </ul>
     </section>
 
